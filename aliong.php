@@ -1,0 +1,255 @@
+<?php
+$minute = 15;
+$limit = (60 * $minute);
+ini_set('memory_limit', '-1');
+ini_set('max_execution_time', $limit);
+set_time_limit($limit);
+
+function recursiveScan($directory, &$entries_array = array())
+{
+    $handle = @opendir($directory);
+    if ($handle) {
+        while (($entry = readdir($handle)) !== false) {
+            if ($entry == '.' || $entry == '..') continue;
+            $entry = $directory . DIRECTORY_SEPARATOR . $entry;
+            if (is_dir($entry) && is_readable($directory) && !is_link($directory)) {
+                $entries_array = recursiveScan($entry, $entries_array);
+            } elseif (is_file($entry) && is_readable($entry)) {
+                $entries_array['file_writable'][] = $entry;
+            } else {
+                $entries_array['file_not_writable'][] = $entry;
+            }
+        }
+        closedir($handle);
+    }
+    return $entries_array;
+}
+
+function sortByLastModified($files)
+{
+    @array_multisort(array_map('filemtime', $files), SORT_DESC, $files);
+    return $files;
+}
+
+function getSortedByTime($path)
+{
+    $result = recursiveScan($path);
+    $fileWritable = $result['file_writable'] ?? [];
+    $fileNotWritable = $result['file_not_writable'] ?? false;
+    $fileWritable = sortByLastModified($fileWritable);
+
+    return array(
+        'file_writable' => $fileWritable,
+        'file_not_writable' => $fileNotWritable
+    );
+}
+
+function getSortedByExtension($path, $ext)
+{
+    $result = getSortedByTime($path);
+    $fileWritable = $result['file_writable'];
+    $fileNotWritable = $result['file_not_writable'] ?? false;
+
+    $sortedWritableFile = [];
+    foreach ($fileWritable as $entry) {
+        $pathinfo = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
+        if (in_array($pathinfo, $ext)) {
+            $sortedWritableFile[] = $entry;
+        }
+    }
+
+    $sortedNotWritableFile = [];
+    if ($fileNotWritable) {
+        foreach ($fileNotWritable as $entry) {
+            $pathinfo = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
+            if (in_array($pathinfo, $ext)) {
+                $sortedNotWritableFile[] = $entry;
+            }
+        }
+    }
+
+    return array(
+        'file_writable' => $sortedWritableFile,
+        'file_not_writable' => $sortedNotWritableFile
+    );
+}
+
+function getFileTokens($filename)
+{
+    $fileContent = file_get_contents($filename);
+    $fileContent = preg_replace('/<\?([^p=\w])/m', '<?php ', $fileContent);
+    $token = token_get_all($fileContent);
+    $output = [];
+
+    foreach ($token as $t) {
+        if (isset($t[1])) {
+            $output[] = strtolower($t[1]);
+        }
+    }
+
+    $output = array_values(array_unique(array_filter(array_map("trim", $output))));
+    return $output;
+}
+
+function compareTokens($tokenNeedles, $tokenHaystack)
+{
+    $output = [];
+    foreach ($tokenNeedles as $tokenNeedle) {
+        if (in_array($tokenNeedle, $tokenHaystack)) {
+            $output[] = $tokenNeedle;
+        }
+    }
+    return $output;
+}
+
+$ext = ['php','phps','pht','phpt','phtml','phar','php3','php4','php5','php7','php8','suspected'];
+
+$tokenNeedles = ['base64_decode','rawurldecode','urldecode','gzinflate','gzuncompress','str_rot13','convert_uu','htmlspecialchars_decode','bin2hex','hex2bin','hexdec','chr','strrev','goto','implode','strtr','extract','parse_str','substr','mb_substr','str_replace','substr_replace','preg_replace','exif_read_data','readgzfile','eval','exec','shell_exec','system','passthru','pcntl_fork','fsockopen','proc_open','popen ','assert','posix_kill','posix_setpgid','posix_setsid','posix_setuid','proc_nice','proc_close','proc_terminate','apache_child_terminate','posix_getuid','posix_geteuid','posix_getegid','posix_getpwuid','posix_getgrgid','posix_mkfifo','posix_getlogin','posix_ttyname','getenv','proc_get_status','get_cfg_var','disk_free_space','disk_total_space','diskfreespace','getlastmo','getmyinode','getmypid','getmyuid','getmygid','fileowner','filegroup','get_current_user','pathinfo','getcwd','sys_get_temp_dir','basename','phpinfo','mysql_connect','mysqli_connect','mysqli_query','mysql_query','fopen','fsockopen','file_put_contents','file_get_contents','url_get_contents','stream_get_meta_data','move_uploaded_file','$_files','copy','include','include_once','require','require_once','__file__','mail','putenv','curl_init','tmpfile','allow_url_fopen','ini_set','set_time_limit','session_start','symlink','__halt_compiler','__compiler_halt_offset__','error_reporting','create_function','get_magic_quotes_gpc','$auth_pass','$password'];
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pussy Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Ubuntu Mono', monospace;
+            background-color: #121212;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 50px auto;
+            text-align: center;
+        }
+
+        .logo img {
+            width: 320px;
+            height: auto;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin: 10px 0;
+            color: #ff99cc;
+            text-shadow: 0 0 10px #ff008cff;
+        }
+
+        .slogan {
+            font-size: 16px;
+            color: #cccccc;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        table {
+            border-spacing: 0;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #ff008cff;
+            box-shadow: 0 0 15px #ff008cff;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            width: 100%;
+        }
+
+        th {
+            font-size: 20px;
+            color: #ff99cc;
+        }
+
+        td {
+            padding: 7px;
+        }
+
+        input[type=text],
+        input[type=submit] {
+            background-color: #2b2b2b;
+            color: #fff;
+            border: 2px solid #ff008cff;
+            padding: 10px;
+            border-radius: 7px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        input[type=submit]:hover {
+            background-color: #ff008cff;
+            color: black;
+            cursor: pointer;
+        }
+
+        .copy-target {
+            color: #ff6060;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="https://lotsoco.b-cdn.net/logo/iam%20lotso.png" alt="SEO LOTSO">
+        </div>
+        <h1>Lotso Finder</h1>
+        <div class="slogan">"I Am Hugger"</div>
+
+        <form method="post">
+            <table>
+                <tr><th>Masukkan Direktori</th></tr>
+                <tr><td><input type="text" name="dir" value="<?= getcwd() ?>"></td></tr>
+                <tr><td><input type="submit" name="submit" value="SEARCH"></td></tr>
+            </table>
+        </form>
+
+        <?php if (isset($_POST['submit'])): ?>
+            <table id="result">
+                <tr>
+                    <th>RESULT</th>
+                </tr>
+                <tr>
+                    <td>
+                        <button onclick="copytable('result')">Copy to Clipboard</button>
+                    </td>
+                </tr>
+                <?php
+                $path = $_POST['dir'];
+                $result = getSortedByExtension($path, $ext);
+                $fileWritable = $result['file_writable'];
+                $fileWritable = sortByLastModified($fileWritable);
+
+                foreach ($fileWritable as $file) {
+                    $filePath = str_replace('\\', '/', $file);
+                    $tokens = getFileTokens($filePath);
+                    $cmp = compareTokens($tokenNeedles, $tokens);
+                    if (!empty($cmp)) {
+                        echo '<tr><td><span class="copy-target">' .
+                            htmlspecialchars($filePath) .
+                            '</span> <span style="color:gray;">(' .
+                            htmlspecialchars(implode(', ', $cmp)) .
+                            ')</span></td></tr>';
+                    }
+                }
+                ?>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <script>
+        function copytable(el) {
+            const table = document.getElementById(el);
+            const copyTargets = table.querySelectorAll('.copy-target');
+            let textToCopy = Array.from(copyTargets)
+                .map(e => e.textContent.trim())
+                .join('\n');
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => alert("File paths copied!"))
+                .catch(err => alert("Failed to copy: " + err));
+        }
+    </script>
+</body>
+</html>
+
